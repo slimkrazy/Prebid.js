@@ -158,8 +158,8 @@ const USER_IDS_CONFIG = {
     atype: 1
   },
 
-  // Verizon Media ConnectID
-  'vmcid': {
+  // Verizon Media Connect ID
+  'connectid': {
     source: 'verizonmedia.com',
     atype: 1
   }
