@@ -75,7 +75,7 @@ let getValidBidResponse = () => {
   };
 };
 
-describe.only('Verizon Media Bid Adapter', () => {
+describe('Verizon Media Bid Adapter', () => {
   describe('isBidRequestValid()', () => {
     const INVALID_INPUT = [
       {},
