@@ -1,4 +1,5 @@
 import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { BANNER } from '../src/mediaTypes.js';
 import * as utils from '../src/utils.js';
 // import { config } from '../src/config.js';
 
@@ -6,11 +7,12 @@ const BIDDER_CODE = 'verizonMedia';
 
 const BID_RESPONSE_TTL = 3600;
 const DEFAULT_CURRENCY = 'USD';
-/*
 const SUPPORTED_USER_ID_SOURCES = [
   'verizonmedia.com',
   'liveramp.com'
 ];
+/*
+// TODO(request SSP team add support for passing this
 const BIDDING_SOURCE = {
   name: 'pbjs',
   version: '$prebid.version$'
@@ -43,28 +45,16 @@ function transformSizes(sizes) {
 }
 
 function extractUserSyncUrls(pixels) {
-  let itemsRegExp = /(img|iframe)[\s\S]*?src\s*=\s*("|')(.*?)\2/gi;
-  let tagNameRegExp = /\w*(?=\s)/;
-  let srcRegExp = /src=("|')(.*?)\1/;
-  let pixelsItems = [];
+  return [];
+}
 
-  if (pixels) {
-    let matchedItems = pixels.match(itemsRegExp);
-    if (matchedItems) {
-      matchedItems.forEach(item => {
-        let tagName = item.match(tagNameRegExp)[0];
-        let url = item.match(srcRegExp)[2];
-
-        if (tagName && tagName) {
-          pixelsItems.push({
-            type: tagName === SYNC_TYPES.IMAGE.TAG ? SYNC_TYPES.IMAGE.TYPE : SYNC_TYPES.IFRAME.TYPE,
-            url: url
-          });
-        }
-      });
-    }
+function getSupportedEids(bid) {
+  if (utils.isArray(bid.userIdAsEids)) {
+    return bid.userIdAsEids.filter(eid => {
+      return SUPPORTED_USER_ID_SOURCES.indexOf(eid.source) !== -1;
+    });
   }
-  return pixelsItems;
+  return [];
 }
 
 function generatePayload(bid, bidderRequest) {
@@ -100,16 +90,11 @@ function generatePayload(bid, bidderRequest) {
           euconsent: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies
             ? bidderRequest.gdprConsent.consentString : ''
         }
+      },
+      ext: {
+        eids: getSupportedEids(bid)
       }
     }
-    /* TODO: Add support for VMUID
-    requestUser.ext.eids = [{
-      source: 'verizonmedia.com',
-      uids: [{
-        id: user.ids.vmuid
-      }]
-    }];
-    */
   };
   return openRTBObject;
 }
@@ -135,11 +120,11 @@ export const spec = {
       }
     };
 
-    if (!hasPurpose1Consent(bidderRequest)) {
-      requestOptions.withCredentials = false;
-    }
+    requestOptions.withCredentials = hasPurpose1Consent(bidderRequest);
 
-    return validBidRequests.map(bid => {
+    return validBidRequests.filter(bid => {
+      return bid.mediaType === BANNER;
+    }).map(bid => {
       return {
         url: SSP_ENDPOINT,
         method: 'POST',
