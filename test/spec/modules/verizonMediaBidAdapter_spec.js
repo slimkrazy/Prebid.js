@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 // import * as utils from 'src/utils.js';
-import { BANNER } from 'src/mediaTypes.js';
+import { BANNER, VIDEO } from 'src/mediaTypes.js';
 import {spec} from 'modules/verizonMediaBidAdapter.js';
 
 const AD_CONTENT = '<script>logInfo(\'ad\');</script>';
@@ -116,6 +116,12 @@ describe('Verizon Media Bid Adapter', () => {
 
       it('should not return request when no bids are present', function () {
         let [request] = spec.buildRequests([]);
+        expect(request).to.be.undefined;
+      });
+
+      it('should not return request when bids are not for display ads', function () {
+        validBidRequests[0].mediaType = VIDEO;
+        let [request] = spec.buildRequests(validBidRequests, bidderRequest);
         expect(request).to.be.undefined;
       });
 
