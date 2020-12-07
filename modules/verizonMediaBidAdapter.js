@@ -18,7 +18,7 @@ const BIDDING_SOURCE = {
   version: '$prebid.version$'
 };
 */
-const SSP_ENDPOINT = 'https://c2shb.ssp.yahoo.com';
+const SSP_ENDPOINT = 'https://c2shb.ssp.yahoo.com/bidRequest';
 
 /* Utility functions */
 function hasPurpose1Consent(bidderRequest) {
@@ -102,8 +102,8 @@ function generatePayload(bid, bidderRequest) {
 
 export const spec = {
   code: BIDDER_CODE,
-
   aliases: [],
+  supportedMediaTypes: [BANNER],
 
   isBidRequestValid: function(bid) {
     const params = bid.params;
@@ -116,14 +116,13 @@ export const spec = {
     let requestOptions = {
       contentType: 'application/json',
       customHeaders: {
-        'x-openrtb-version': '2.3'
+        // 'x-openrtb-version': '2.3'
       }
     };
 
     requestOptions.withCredentials = hasPurpose1Consent(bidderRequest);
-
     return validBidRequests.filter(bid => {
-      return bid.mediaType === BANNER;
+      return Object.keys(bid.mediaTypes).includes(BANNER);
     }).map(bid => {
       return {
         url: SSP_ENDPOINT,
