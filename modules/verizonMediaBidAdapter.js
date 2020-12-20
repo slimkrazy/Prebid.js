@@ -1,6 +1,7 @@
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER } from '../src/mediaTypes.js';
 import * as utils from '../src/utils.js';
+import {config} from '../src/config.js';
 // import { config } from '../src/config.js';
 
 const BIDDER_CODE = 'verizonMedia';
@@ -57,10 +58,42 @@ function getSupportedEids(bid) {
   return [];
 }
 
-function generatePayload(bid, bidderRequest) {
-  let openRTBObject = {
-    id: bid.transactionId,
-    imp: [{
+function generateOpenRtbObject(bidderRequest) {
+  if (bidderRequest) {
+    return {
+      id: bidderRequest.auctionId,
+      imp: [],
+      site: {
+        id: bidderRequest.bids[0].params.dcn,
+        page: bidderRequest.refererInfo.referer
+      },
+      device: {
+        ua: Navigator.userAgent
+      },
+      regs: {
+        ext: {
+          'us_privacy': bidderRequest.uspConsent ? bidderRequest.uspConsent : '',
+          gdpr: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies ? 1 : 0
+        }
+      },
+      user: {
+        regs: {
+          gdpr: {
+            euconsent: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies
+              ? bidderRequest.gdprConsent.consentString : ''
+          }
+        },
+        ext: {
+          eids: getSupportedEids(bidderRequest.bids[0])
+        }
+      }
+    };
+  }
+}
+
+function appendImpObject(bid, openRtbObject) {
+  if (openRtbObject && bid) {
+    openRtbObject.imp.push({
       id: bid.bidId,
       banner: {
         mimes: ['text/html', 'text/javascript', 'application/javascript', 'image/jpg'],
@@ -70,33 +103,17 @@ function generatePayload(bid, bidderRequest) {
       ext: {
         pos: bid.params.pos
       }
-    }],
-    site: {
-      id: bid.params.dcn,
-      page: bidderRequest.refererInfo.referer
-    },
-    device: {
-      ua: Navigator.userAgent
-    },
-    regs: {
-      ext: {
-        'us_privacy': bidderRequest.uspConsent ? bidderRequest.uspConsent : '',
-        gdpr: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies ? 1 : 0
-      }
-    },
-    user: {
-      regs: {
-        gdpr: {
-          euconsent: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies
-            ? bidderRequest.gdprConsent.consentString : ''
-        }
-      },
-      ext: {
-        eids: getSupportedEids(bid)
-      }
-    }
+    });
+  }
+}
+
+function generateServerRequest({payload, requestOptions}) {
+  return {
+    url: config.getConfig('verizonmedia.endpoint') || SSP_ENDPOINT,
+    method: 'POST',
+    data: payload,
+    options: requestOptions
   };
-  return openRTBObject;
 }
 /* Utility functions */
 
@@ -113,28 +130,34 @@ export const spec = {
   },
 
   buildRequests: function(validBidRequests, bidderRequest) {
-    let requestOptions = {
+    const requestOptions = {
       contentType: 'application/json',
       customHeaders: {
-        // 'x-openrtb-version': '2.3'
+        'x-openrtb-version': '2.5'
       }
     };
 
     requestOptions.withCredentials = hasPurpose1Consent(bidderRequest);
-    return validBidRequests.filter(bid => {
+    const payload = generateOpenRtbObject(bidderRequest);
+    const filteredBidRequests = validBidRequests.filter(bid => {
       return Object.keys(bid.mediaTypes).includes(BANNER);
-    }).map(bid => {
-      return {
-        url: SSP_ENDPOINT,
-        method: 'POST',
-        data: generatePayload(bid, bidderRequest),
-        options: requestOptions
-      };
+    });
+
+    if (config.getConfig('verizonmedia.singleRequestMode') === true) {
+      filteredBidRequests.forEach(bid => {
+        appendImpObject(bid, payload);
+      });
+      return generateServerRequest({payload, requestOptions});
+    }
+
+    return filteredBidRequests.map(bid => {
+      appendImpObject(bid, payload);
+      return generateServerRequest({payload, requestOptions});
     });
   },
 
   interpretResponse: function(serverResponse, bidRequest) {
-    let response = [];
+    const response = [];
     if (!serverResponse.body) {
       return response;
     }
