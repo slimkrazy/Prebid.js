@@ -19,6 +19,7 @@ const BIDDING_SOURCE = {
   version: '$prebid.version$'
 };
 */
+
 const SSP_ENDPOINT = 'https://c2shb.ssp.yahoo.com/bidRequest';
 
 /* Utility functions */
@@ -133,11 +134,12 @@ export const spec = {
     const requestOptions = {
       contentType: 'application/json',
       customHeaders: {
-        'x-openrtb-version': '2.5'
+        'x-openrtb-version': '2.3'
       }
     };
 
     requestOptions.withCredentials = hasPurpose1Consent(bidderRequest);
+
     const payload = generateOpenRtbObject(bidderRequest);
     const filteredBidRequests = validBidRequests.filter(bid => {
       return Object.keys(bid.mediaTypes).includes(BANNER);

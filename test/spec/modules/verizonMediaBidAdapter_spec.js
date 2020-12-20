@@ -149,7 +149,7 @@ describe('Verizon Media Bid Adapter', () => {
           {
             contentType: 'application/json',
             customHeaders: {
-              'x-openrtb-version': '2.5'
+              'x-openrtb-version': '2.3'
             },
             withCredentials: true
           });
