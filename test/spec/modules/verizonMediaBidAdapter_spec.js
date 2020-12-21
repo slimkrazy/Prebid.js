@@ -216,7 +216,7 @@ describe('Verizon Media Bid Adapter', () => {
         it('should return request objects that make a POST request to the override endpoint', () => {
           const testOverrideEndpoint = 'http://foo.bar.baz.com/bidRequest';
           config.setConfig({
-            verizonmedia: {
+            verizonMedia: {
               endpoint: testOverrideEndpoint
             }
           });
@@ -229,7 +229,7 @@ describe('Verizon Media Bid Adapter', () => {
 
         it('should return a single request object for single request mode', () => {
           config.setConfig({
-            verizonmedia: {
+            verizonMedia: {
               singleRequestMode: true
             }
           });

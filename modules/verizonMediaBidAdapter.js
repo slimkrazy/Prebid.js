@@ -110,7 +110,7 @@ function appendImpObject(bid, openRtbObject) {
 
 function generateServerRequest({payload, requestOptions}) {
   return {
-    url: config.getConfig('verizonmedia.endpoint') || SSP_ENDPOINT,
+    url: config.getConfig('verizonMedia.endpoint') || SSP_ENDPOINT,
     method: 'POST',
     data: payload,
     options: requestOptions
@@ -145,7 +145,7 @@ export const spec = {
       return Object.keys(bid.mediaTypes).includes(BANNER);
     });
 
-    if (config.getConfig('verizonmedia.singleRequestMode') === true) {
+    if (config.getConfig('verizonMedia.singleRequestMode') === true) {
       filteredBidRequests.forEach(bid => {
         appendImpObject(bid, payload);
       });
@@ -153,8 +153,9 @@ export const spec = {
     }
 
     return filteredBidRequests.map(bid => {
-      appendImpObject(bid, payload);
-      return generateServerRequest({payload, requestOptions});
+      let payloadClone = utils.deepClone(payload);
+      appendImpObject(bid, payloadClone);
+      return generateServerRequest({payload: payloadClone, requestOptions});
     });
   },
 
