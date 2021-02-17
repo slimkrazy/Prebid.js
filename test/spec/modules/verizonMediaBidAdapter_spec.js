@@ -149,7 +149,7 @@ describe('Verizon Media Bid Adapter', () => {
           {
             contentType: 'application/json',
             customHeaders: {
-              'x-openrtb-version': '2.3'
+              'x-openrtb-version': '2.5'
             },
             withCredentials: true
           });
@@ -177,10 +177,10 @@ describe('Verizon Media Bid Adapter', () => {
           id: bidderRequest.auctionId,
           imp: [{
             id: bid.bidId,
+            tagid: bid.params.pos,
             banner: {
               mimes: ['text/html', 'text/javascript', 'application/javascript', 'image/jpg'],
-              format: [{w: 300, h: 250}, {w: 300, h: 600}],
-              tagid: bid.params.pos
+              format: [{w: 300, h: 250}, {w: 300, h: 600}]
             },
             ext: {
               pos: bid.params.pos
@@ -191,13 +191,20 @@ describe('Verizon Media Bid Adapter', () => {
             page: bidderRequest.refererInfo.referer
           },
           device: {
-            ua: Navigator.userAgent
+            dnt: 0,
+            ua: navigator.userAgent
           },
           regs: {
             ext: {
               'us_privacy': '',
               gdpr: 1
             }
+          },
+          source: {
+            ext: {
+              hb: 1
+            },
+            fd: 1
           },
           user: {
             regs: {

@@ -69,13 +69,20 @@ function generateOpenRtbObject(bidderRequest) {
         page: bidderRequest.refererInfo.referer
       },
       device: {
-        ua: Navigator.userAgent
+        dnt: 0,
+        ua: navigator.userAgent
       },
       regs: {
         ext: {
           'us_privacy': bidderRequest.uspConsent ? bidderRequest.uspConsent : '',
           gdpr: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies ? 1 : 0
         }
+      },
+      source: {
+        ext: {
+          hb: 1
+        },
+        fd: 1
       },
       user: {
         regs: {
@@ -96,10 +103,10 @@ function appendImpObject(bid, openRtbObject) {
   if (openRtbObject && bid) {
     openRtbObject.imp.push({
       id: bid.bidId,
+      tagid: bid.params.pos,
       banner: {
         mimes: ['text/html', 'text/javascript', 'application/javascript', 'image/jpg'],
-        format: transformSizes(bid.sizes),
-        tagid: bid.params.pos
+        format: transformSizes(bid.sizes)
       },
       ext: {
         pos: bid.params.pos
@@ -134,7 +141,7 @@ export const spec = {
     const requestOptions = {
       contentType: 'application/json',
       customHeaders: {
-        'x-openrtb-version': '2.3'
+        'x-openrtb-version': '2.5'
       }
     };
 
@@ -161,32 +168,34 @@ export const spec = {
 
   interpretResponse: function(serverResponse, bidRequest) {
     const response = [];
-    if (!serverResponse.body) {
+    if (!serverResponse.body || !Array.isArray(serverResponse.body.seatbid)) {
       return response;
     }
 
-    let bid;
+    let seatbids = serverResponse.body.seatbid;
+    seatbids.forEach(seatbid => {
+      let bid;
 
-    try {
-      bid = serverResponse.body.seatbid[0].bid[0];
-    } catch (e) {
-      return response;
-    }
+      try {
+        bid = seatbid.bid[0];
+      } catch (e) {
+        return response;
+      }
 
-    let cpm = (bid.ext && bid.ext.encp) ? bid.ext.encp : bid.price;
+      let cpm = (bid.ext && bid.ext.encp) ? bid.ext.encp : bid.price;
 
-    response.push({
-      bidderCode: bidRequest.bidderCode,
-      requestId: bidRequest.bidId,
-      ad: bid.adm,
-      cpm: cpm,
-      width: bid.w,
-      height: bid.h,
-      creativeId: bid.crid || 0,
-      currency: response.cur || DEFAULT_CURRENCY,
-      dealId: bid.dealid ? bid.dealid : null,
-      netRevenue: true,
-      ttl: BID_RESPONSE_TTL
+      response.push({
+        requestId: bid.impid,
+        ad: bid.adm,
+        cpm: cpm,
+        width: bid.w,
+        height: bid.h,
+        creativeId: bid.crid || 0,
+        currency: response.cur || DEFAULT_CURRENCY,
+        dealId: bid.dealid ? bid.dealid : null,
+        netRevenue: true,
+        ttl: BID_RESPONSE_TTL
+      });
     });
 
     return response;
