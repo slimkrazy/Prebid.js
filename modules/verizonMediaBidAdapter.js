@@ -46,8 +46,35 @@ function transformSizes(sizes) {
   return sizes.map(getSize);
 }
 
-function extractUserSyncUrls(pixels) {
-  return [];
+function extractUserSyncUrls(syncOptions, pixels) {
+  let itemsRegExp = /(img|iframe)[\s\S]*?src\s*=\s*("|')(.*?)\2/gi;
+  let tagNameRegExp = /\w*(?=\s)/;
+  let srcRegExp = /src=("|')(.*?)\1/;
+  let userSyncObjects = [];
+
+  if (pixels) {
+    let matchedItems = pixels.match(itemsRegExp);
+    if (matchedItems) {
+      matchedItems.forEach(item => {
+        let tagName = item.match(tagNameRegExp)[0];
+        let url = item.match(srcRegExp)[2];
+
+        if (tagName && url) {
+          let tagType = tagName.toLowerCase() === 'img' ? 'image' : 'iframe';
+          if ((!syncOptions.iframeEnabled && tagType === 'iframe') ||
+                (!syncOptions.pixelEnabled && tagType === 'image')) {
+            return;
+          }
+          userSyncObjects.push({
+            type: tagType,
+            url: url
+          });
+        }
+      });
+    }
+  }
+
+  return userSyncObjects;
 }
 
 function getSupportedEids(bid) {
@@ -109,7 +136,8 @@ function appendImpObject(bid, openRtbObject) {
         format: transformSizes(bid.sizes)
       },
       ext: {
-        pos: bid.params.pos
+        pos: bid.params.pos,
+        dfp_ad_unit_code: bid.adUnitCode
       }
     });
   }
@@ -205,7 +233,7 @@ export const spec = {
     const bidResponse = !utils.isEmpty(serverResponses) && serverResponses[0].body;
 
     if (bidResponse && bidResponse.ext && bidResponse.ext.pixels) {
-      return extractUserSyncUrls(bidResponse.ext.pixels);
+      return extractUserSyncUrls(syncOptions, bidResponse.ext.pixels);
     }
 
     return [];

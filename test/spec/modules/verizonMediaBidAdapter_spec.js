@@ -7,10 +7,11 @@ import {spec} from 'modules/verizonMediaBidAdapter.js';
 const AD_CONTENT = '<script>logInfo(\'ad\');</script>';
 const DEFAULT_BID_ID = '84ab500420319d';
 const DEFAULT_BID_POS = 'header';
+const DEFAULT_AD_UNIT_CODE = '/19968336/header-bid-tag-1';
 
-let generateBidObject = ({bidId, pos}) => {
+let generateBidObject = ({bidId, pos, adUnitCode}) => {
   return {
-    adUnitCode: 'test-div',
+    adUnitCode,
     auctionId: 'b06c5141-fe8f-4cdf-9d7d-54415490a917',
     bidder: 'verizonmedia',
     bidId,
@@ -34,7 +35,11 @@ let getDefaultBidRequest = () => {
     auctionId: 'd3e07445-ab06-44c8-a9dd-5ef9af06d2a6',
     bidderRequestId: '7101db09af0db2',
     start: new Date().getTime(),
-    bids: [generateBidObject({bidId: DEFAULT_BID_ID, pos: DEFAULT_BID_POS})]
+    bids: [generateBidObject({
+      bidId: DEFAULT_BID_ID,
+      pos: DEFAULT_BID_POS,
+      adUnitCode: DEFAULT_AD_UNIT_CODE
+    })]
   };
 };
 
@@ -79,7 +84,7 @@ let getValidBidResponse = () => {
   };
 };
 
-describe('Verizon Media Bid Adapter', () => {
+describe.only('Verizon Media Bid Adapter', () => {
   describe('isBidRequestValid()', () => {
     const INVALID_INPUT = [
       {},
@@ -183,7 +188,8 @@ describe('Verizon Media Bid Adapter', () => {
               format: [{w: 300, h: 250}, {w: 300, h: 600}]
             },
             ext: {
-              pos: bid.params.pos
+              pos: bid.params.pos,
+              dfp_ad_unit_code: DEFAULT_AD_UNIT_CODE,
             }
           }],
           site: {
@@ -242,16 +248,27 @@ describe('Verizon Media Bid Adapter', () => {
           });
           const secondBidId = '84ab50xxxxx';
           const secondBidPos = 'footer';
-          validBidRequests.push(generateBidObject({bidId: secondBidId, pos: secondBidPos}));
+          const secondAdUnitCode = 'test-ad-unit-code-123';
+          validBidRequests.push(generateBidObject({
+            bidId: secondBidId,
+            pos: secondBidPos,
+            adUnitCode: secondAdUnitCode
+          }));
           const output = spec.buildRequests(validBidRequests, bidderRequest);
           expect(output.data.imp).to.be.an('array').with.lengthOf(2);
           expect(output.data.imp[0]).to.deep.include({
             id: DEFAULT_BID_ID,
-            ext: {pos: DEFAULT_BID_POS}
+            ext: {
+              pos: DEFAULT_BID_POS,
+              dfp_ad_unit_code: DEFAULT_AD_UNIT_CODE
+            }
           });
           expect(output.data.imp[1]).to.deep.include({
             id: secondBidId,
-            ext: {pos: secondBidPos}
+            ext: {
+              pos: secondBidPos,
+              dfp_ad_unit_code: secondAdUnitCode
+            }
           });
         });
       });
@@ -267,6 +284,66 @@ describe('Verizon Media Bid Adapter', () => {
   });
 
   describe('getUserSyncs()', () => {
+    const IMAGE_PIXEL_URL = 'http://image-pixel.com/foo/bar?1234&baz=true';
+    const IFRAME_ONE_URL = 'http://image-iframe.com/foo/bar?1234&baz=true';
+    const IFRAME_TWO_URL = 'http://image-iframe-two.com/foo/bar?1234&baz=true';
 
+    let serverResponses = [];
+    beforeEach(() => {
+      serverResponses[0] = {
+        body: {
+          ext: {
+            pixels: `<script>document.write('<iframe src="${IFRAME_ONE_URL}"></iframe>` +
+                    `<img src="${IMAGE_PIXEL_URL}"></iframe>` +
+                    `<iframe src="${IFRAME_TWO_URL}"></iframe>');</script>`
+          }
+        }
+      }
+    });
+
+    it('for only iframe enabled syncs', () => {
+      let syncOptions = {
+        iframeEnabled: true,
+        pixelEnabled: false
+      };
+      let pixelsObjects = spec.getUserSyncs(syncOptions, serverResponses);
+      expect(pixelsObjects.length).to.equal(2);
+      expect(pixelsObjects).to.deep.equal(
+        [
+          {type: 'iframe', 'url': IFRAME_ONE_URL},
+          {type: 'iframe', 'url': IFRAME_TWO_URL}
+        ]
+      )
+    });
+
+    it('for only pixel enabled syncs', () => {
+      let syncOptions = {
+        iframeEnabled: false,
+        pixelEnabled: true
+      };
+      let pixelsObjects = spec.getUserSyncs(syncOptions, serverResponses);
+      expect(pixelsObjects.length).to.equal(1);
+      expect(pixelsObjects).to.deep.equal(
+        [
+          {type: 'image', 'url': IMAGE_PIXEL_URL}
+        ]
+      )
+    });
+
+    it('for both pixel and iframe enabled syncs', () => {
+      let syncOptions = {
+        iframeEnabled: true,
+        pixelEnabled: true
+      };
+      let pixelsObjects = spec.getUserSyncs(syncOptions, serverResponses);
+      expect(pixelsObjects.length).to.equal(3);
+      expect(pixelsObjects).to.deep.equal(
+        [
+          {type: 'iframe', 'url': IFRAME_ONE_URL},
+          {type: 'image', 'url': IMAGE_PIXEL_URL},
+          {type: 'iframe', 'url': IFRAME_TWO_URL}
+        ]
+      )
+    });
   });
 });
